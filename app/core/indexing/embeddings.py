@@ -1,7 +1,6 @@
 from typing import List
 import httpx
 import time
-from tenacity import retry, wait_fixed, wait_random, stop_after_attempt, stop_after_delay
 
 from app.config import get_config
 
@@ -10,7 +9,6 @@ MISTRAL_API_KEY = config.mistral_api_key
 MISTRAL_EMBED_URL = 'https://api.mistral.ai/v1/embeddings'
 MISTRAL_EMBED_MODEL = config.mistral_embed_model
 
-@retry(wait=wait_fixed(2) + wait_random(0, 3), stop=(stop_after_delay(30) | stop_after_attempt(5)))
 def embed_texts(texts: List[str], timeout: float = 30.0) -> List[List[float]]:
     headers = {
         'Authorization': f'Bearer {MISTRAL_API_KEY}',
