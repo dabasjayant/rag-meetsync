@@ -1,0 +1,278 @@
+body {
+    margin: 0;
+    font-family: ui-sans-serif,-apple-system,system-ui,Segoe UI,Helvetica,Apple Color Emoji,Arial,sans-serif,Segoe UI Emoji,Segoe UI Symbol;
+}
+
+.header {
+    padding: .5rem;
+    position: fixed;
+    width: 100%;
+}
+
+.logo {
+    margin-top: 8px;
+    margin-left: 8px;
+    font-weight: 300;
+    font-size: 24px;
+    line-height: 1.5;
+    padding-inline: .625rem;
+    border-radius: .5rem;
+    float: left;
+    cursor: pointer;
+}
+.logo:hover {
+    background-color: #f2f2f2;
+}
+
+.wrapper {
+    display: flex;
+    flex-direction: row;
+    position: fixed;
+    inset: 0;
+    top: 60px;
+    width: 100vw;
+    height: calc(100vh - 60px);
+}
+
+#loader-wrapper {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    background-color: rgba(8, 8, 8, 0.2);
+    display: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+.show-loader {
+    display: flex !important;
+}
+.loader {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: inline-block;
+    border-top: 3px solid #0d0d0d;
+    border-right: 3px solid transparent;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
+}
+
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+} 
+
+.file-container {
+    position: relative;
+    margin: 2rem 0rem 0rem;
+    max-width: 260px;
+    box-shadow: 4px 0 4px -5px #aeaeae;
+    font-size: .875rem;
+}
+.reset-btn {
+    cursor: pointer;
+    color: #e02e2a;
+    fill: #e02e2a;
+    gap: 12px !important;
+}
+.files-title {
+    padding: 1.25rem 1.25rem .5rem;
+    margin-inline: calc(.25rem * 1.5);
+    font-size: 14px;
+    color: #929292;
+    cursor: default;
+}
+
+.file-container .item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    border-radius: 10px;
+    line-height: 1.5;
+    padding: .5rem 1.25rem;
+    width: 208px;
+    margin-inline: calc(.25rem * 1.5);
+    cursor: pointer;
+    gap: 20px;
+}
+.file-container .item:hover {
+    background-color: #f2f2f2;
+}
+
+.file-container .item span {
+    pointer-events: none;
+}
+
+.file-container .item svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    pointer-events: none;
+    flex-shrink: 0;
+}
+.file-container .file-item svg {
+    width: 1rem;
+    height: 1rem;
+}
+.file-container .file-item:hover {
+    color: #e02e2a;
+    fill: #e02e2a;
+}
+
+.file-list {
+    overflow: scroll;
+    height: calc(100% - 5rem);
+}
+.file-item {
+    justify-content: space-between;
+}
+
+.container {
+    position: relative;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.intro-wrapper {
+    margin-bottom: 2.25rem;
+    text-align: center;
+    color: #0d0d0d;
+}
+
+h2 {
+    margin-bottom: 1.25rem;
+}
+
+h2 div, h3 div {
+    white-space: pre-wrap;
+    text-wrap: pretty;
+    padding-inline: 0.25rem;
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: .38px;
+    line-height: 34px;
+}
+h3 div {
+    font-size: 18px;
+    line-height: 16px;
+    color: #626262;
+}
+
+form {
+    width: calc(100vw - 260px);
+}
+
+.bottom {
+    padding: 0rem 4rem;
+    margin-bottom: 8rem;
+}
+
+.input-container {
+    margin: auto;
+    max-width: 48rem;
+}
+
+.input-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    padding-inline: .625rem;
+    padding-top: .5rem;
+    padding-bottom: .5rem;
+    background-clip: padding-box;
+    border-radius: 28px;
+    box-shadow: 0 0 #0000, 0 0 #0000, 0 0 #0000, 0 0 #0000, 0px 4px 4px 0px #0000000a,0px 0px 1px 0px #0000009e;
+    overflow: clip;
+    cursor: text;
+}
+.input-wrapper.expand {
+    align-items: flex-end;
+}
+
+textarea {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-family: 400;
+    font-size: 15px;
+    padding: .635rem 0.375rem;
+    height: 1lh;
+    border-width: 0;
+    box-sizing: content-box;
+    color: #0d0d0d;
+    resize: none;
+    width: 100%;
+    max-height: 230px;
+    word-wrap: break-word;
+    letter-spacing: .2px;
+    white-space: break-spaces;
+    background-color: #fff;
+}
+textarea:focus, textarea:active {
+    outline: none;
+    text-decoration: none;
+}
+textarea:disabled {
+    cursor: not-allowed;
+}
+
+.upload-btn, .send-btn {
+    vertical-align: middle;
+    cursor: pointer;
+    padding: .5rem;
+    border-radius: 32px;
+    user-select: none;
+    white-space: nowrap;
+    display: flex;
+    position: relative;
+}
+.upload-btn:hover {
+    background-color: #f6f6f6;
+}
+.send-btn {
+    background-color: #0d0d0d;
+}
+.upload-btn svg, .send-btn svg {
+    height: 1.25rem;
+    width: 1.25rem;
+    pointer-events: none;
+}
+
+.send-btn.disable {
+    background-color: #a0a0a0;
+}
+
+#chat-log {
+    position: relative;
+    padding: 0rem 4rem;
+    max-width: 48rem;
+    max-height: calc(100vh - 200px);
+    margin: auto;
+    margin-bottom: 1rem;
+    overflow: scroll;
+}
+
+.user-msg, .agent-msg {
+    background-color: #f9f9f9;
+    border-radius: 1.25rem;
+    padding: .75rem 1.25rem;
+    margin: 1rem 0;
+    max-width: 80%;
+    width: max-content;
+    font-size: 14px;
+}
+.user-msg p, .agent-msg p {
+    margin: 0;
+}
+.user-msg {
+    background-color: #00da00;
+    margin: 0 0 0 auto;
+}
