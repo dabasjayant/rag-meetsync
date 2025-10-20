@@ -133,13 +133,13 @@ body {
 
 .container {
     position: relative;
-    overflow-x: hidden;
-    overflow-y: scroll;
+    overflow: hidden;
     inset: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    height: calc(100vh - 60px);
 }
 
 .intro-wrapper {
@@ -169,7 +169,6 @@ h3 div {
 
 form {
     width: calc(100vw - 260px);
-    height: calc(100vh - 60px);
 }
 
 .bottom {
