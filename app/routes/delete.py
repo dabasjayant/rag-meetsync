@@ -1,44 +1,55 @@
-from pathlib import Path
-import os
 from fastapi import APIRouter, HTTPException
-from app.models import DeleteResponse
-from app.core.ingestion.delete_ops import remove_file_data
-from app.core.indexing import rebuild_from_corpus
+import os
+import json
+import numpy as np
+from app.config import get_config
 
-router = APIRouter(prefix='/delete', tags=['Maintenance'])
+router = APIRouter(prefix="/delete", tags=["admin"])
+config = get_config()
 
-DATA_DIR = Path('data')
-FILE_DIR = DATA_DIR / 'corpus' / 'files'
-TEXTS_DIR = DATA_DIR / 'corpus' / 'texts'
-INDEX_DIR = DATA_DIR / 'index'
+CHUNK_FILE = os.path.join(config.data_dir, "chunks.jsonl")
+META_FILE = os.path.join(config.data_dir, "metadata.jsonl")
+EMBED_FILE = os.path.join(config.data_dir, "embeddings.npy")
 
-@router.delete('/all', response_model=DeleteResponse)
-async def delete_all_files():
-    '''Completely reset the knowledge base (files, embeddings, indexes).'''
-    try:
-        deleted = {'file_json': False, 'chunks_removed': 0, 'embeddings_removed': 0}
-        for item in os.listdir(FILE_DIR):
-            item_id = os.path.splitext(item)[0]
-            result = remove_file_data(item_id)
-            if result['file_json']:
-                deleted['file_json'] = True
-            deleted['chunks_removed'] += result['chunks_removed']
-            deleted['embeddings_removed'] += result['embeddings_removed']
 
-        return DeleteResponse(status='Deleted all files. Memory reset.', **deleted)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@router.delete("/all", summary="Delete all indexed data")
+async def delete_all():
+    """Completely remove all knowledge base data."""
+    for f in [CHUNK_FILE, META_FILE, EMBED_FILE]:
+        if os.path.exists(f):
+            os.remove(f)
+    return {"deleted": "all", "status": "cleared"}
 
-@router.delete('/{file_id}', response_model=DeleteResponse)
-async def delete_file(file_id: str, reindex: bool = True):
-    '''
-    Remove a file and its related data (chunks, embeddings, metadata).
-    Optionally triggers index rebuild for consistency.
-    '''
-    try:
-        result = remove_file_data(file_id)
-        if reindex:
-            rebuild_from_corpus(build_embeddings=True)
-        return DeleteResponse(status=f'Deleted {file_id}', **result)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@router.delete("/{file_id}", summary="Delete a specific ingested file by ID")
+async def delete_file(file_id: str):
+    if not os.path.exists(META_FILE) or not os.path.exists(CHUNK_FILE) or not os.path.exists(EMBED_FILE):
+        raise HTTPException(status_code=404, detail="No ingested data found.")
+
+    with open(META_FILE, "r", encoding="utf-8") as mf, open(CHUNK_FILE, "r", encoding="utf-8") as cf:
+        metas = [json.loads(line) for line in mf]
+        chunks = [json.loads(line) for line in cf]
+    embeddings = np.load(EMBED_FILE)
+
+    indices_to_keep = [i for i, m in enumerate(metas) if m["file_id"] != file_id]
+    indices_to_drop = [i for i, m in enumerate(metas) if m["file_id"] == file_id]
+
+    if not indices_to_drop:
+        raise HTTPException(status_code=404, detail=f"File ID '{file_id}' not found.")
+
+    new_chunks = [chunks[i] for i in indices_to_keep]
+    new_metas = [metas[i] for i in indices_to_keep]
+    new_embeddings = embeddings[indices_to_keep, :]
+
+    with open(META_FILE, "w", encoding="utf-8") as mf:
+        for m in new_metas:
+            mf.write(json.dumps(m) + "\n")
+    with open(CHUNK_FILE, "w", encoding="utf-8") as cf:
+        for c in new_chunks:
+            cf.write(json.dumps(c) + "\n")
+    np.save(EMBED_FILE, new_embeddings)
+
+    return {
+        "deleted_file_id": file_id,
+        "removed_chunks": len(indices_to_drop),
+        "remaining_files": len(set(m["file_id"] for m in new_metas)),
+    }

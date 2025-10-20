@@ -1,42 +1,58 @@
 from fastapi import APIRouter
-from app.models import QueryRequest, QueryResponse
-from app.core.query.intent import detect_intent
-from app.core.search.retrieve import retrieve
-from app.core.indexing.embeddings import embed_query
-from app.core.query.prompting import build_prompt
-from app.core.query.generation import generate_answer
+from pydantic import BaseModel
+from app.core.query_pipeline import (
+    should_trigger_search,
+    normalize_query,
+    retrieve_relevant_chunks,
+)
+from app.core.generation import generate_answer
+from app.core.policy import detect_sensitive_query
 
-router = APIRouter(prefix='/query', tags=['Query'])
+router = APIRouter(prefix="/query", tags=["query"])
 
-@router.post('', response_model=QueryResponse)
-@router.post('/', response_model=QueryResponse)
-async def query_system(request: QueryRequest):
-    query = request.query.strip()
-    intent = detect_intent(query)
 
-    if intent == 'chit_chat':
-        return QueryResponse(
-            answer='Hello! You can ask questions about your project documents or meetings.',
-            diagnostics={'intent': intent}
-        )
+class QueryRequest(BaseModel):
+    query: str
 
-    if intent == 'system':
-        return QueryResponse(
-            answer='System command detected. Try using the `/ingest` endpoint to upload documents.',
-            diagnostics={'intent': intent}
-        )
 
-    # Retrieval
-    retrieved = retrieve(query, embed_query, top_k=request.top_k)
-    if not retrieved:
-        return QueryResponse(answer='Insufficient evidence.', diagnostics={'intent': intent, 'retrieved': 0})
+@router.post("", summary="Query the knowledge base")
+async def query_kb(req: QueryRequest):
+    query = normalize_query(req.query)
 
-    # Build generation prompt
-    prompt = build_prompt(query, retrieved)
-    answer = generate_answer(prompt)
+    # Step 1: Sensitive query check
+    is_sensitive, reason = detect_sensitive_query(query)
+    if is_sensitive:
+        return {
+            "query": query,
+            "answer": f"Refused: {reason} Please ask a general, non-sensitive question.",
+            "citations": []
+        }
 
-    return QueryResponse(
-        answer=answer,
-        citations=retrieved,
-        diagnostics={'intent': intent, 'retrieved': len(retrieved)}
-    )
+    if not should_trigger_search(query):
+        return {"query": query, "answer": "Hello! How can I help you today?", "citations": []}
+
+    results = retrieve_relevant_chunks(query)
+
+    # Evidence adequacy check
+    if len(results) < 2:
+        return {
+            "query": query,
+            "answer": "Insufficient evidence to answer confidently.",
+            "citations": [],
+        }
+
+    top_chunks = [r[0] for r in results]
+    gen = generate_answer(query, top_chunks)
+    citation_data = []
+    for cid in gen["citations"]:
+        try:
+            idx = int(cid)
+            citation_data.append({"id": cid, "text": top_chunks[idx][:250] + "..."})
+        except:
+            continue
+
+    return {
+        "query": query,
+        "answer": gen["answer"],
+        "citations": citation_data,
+    }
