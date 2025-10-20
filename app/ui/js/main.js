@@ -28,7 +28,7 @@ async function loadFileList() {
             item.classList.add('file-item');
             item.classList.add('item');
             item.innerHTML = `
-            <span>${f.metadata?.title || f.filename}</span>
+            <span>${f.file}</span>
             <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" class="icon"><path d="M14.2548 4.75488C14.5282 4.48152 14.9717 4.48152 15.2451 4.75488C15.5184 5.02825 15.5184 5.47175 15.2451 5.74512L10.9902 10L15.2451 14.2549L15.3349 14.3652C15.514 14.6369 15.4841 15.006 15.2451 15.2451C15.006 15.4842 14.6368 15.5141 14.3652 15.335L14.2548 15.2451L9.99995 10.9902L5.74506 15.2451C5.4717 15.5185 5.0282 15.5185 4.75483 15.2451C4.48146 14.9718 4.48146 14.5282 4.75483 14.2549L9.00971 10L4.75483 5.74512L4.66499 5.63477C4.48589 5.3631 4.51575 4.99396 4.75483 4.75488C4.99391 4.51581 5.36305 4.48594 5.63471 4.66504L5.74506 4.75488L9.99995 9.00977L14.2548 4.75488Z"></path></svg>`;
             container.appendChild(item);
         }
@@ -49,7 +49,7 @@ async function deleteItem(e) {
     const id = e.target.dataset.id;
     try {
         const res = await deleteFile(id);
-        console.log(`${res.status}\nRemoved ${res.chunks_removed} chunks.`);
+        console.log(`Removed ${res.removed_chunks} chunks.`);
         setTimeout(async () => {
             await loadFileList();
             loader(false);
@@ -194,6 +194,7 @@ async function sendMessage() {
     userInput.value = '';
     autosize(document.getElementById('user-input'));
     userInput.disabled = true;
+    sendBtn.classList.add('disable');
     appendMessage('user', query);
     const agent_msg = appendMessage('agent', 'Thinking...');
 
@@ -206,14 +207,9 @@ async function sendMessage() {
             let citations = '';
             if (data.citations?.length) {
                 const refs = data.citations.map(c => {
-                    if (typeof c === 'string') return `<li>${c}</li>`;
-                    // Handle object form
-                    const fid = c.file_id || c.source || 'unknown';
-                    const cid = c.chunk_id ? ` (${c.chunk_id})` : '';
-                    const score = c.score ? ` – score: ${c.score.toFixed(2)}` : '';
-                    return `<li>${fid}${cid}${score}</li>`;
-                }).join('');
-                citations += `<p><b>Sources:</b></p><ul>${refs}</ul>`;
+                    return `<div class="citation">[${c.id}]<div class="cite-text">${c.text}</div></div>`;
+                }).join(', ');
+                citations += `<p><b>Sources:</b></p><div>${refs}</div>`;
             }
             const response = `${answer}${(citations.length > 0) ? '<br/><br/>'+marked.parse(citations) : ''}`;
             agent_msg.innerHTML = response;
