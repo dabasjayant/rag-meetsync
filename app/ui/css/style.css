@@ -169,6 +169,7 @@ h3 div {
 
 form {
     width: calc(100vw - 260px);
+    height: calc(100vh - 60px);
 }
 
 .bottom {
@@ -221,7 +222,7 @@ textarea:focus, textarea:active {
     text-decoration: none;
 }
 textarea:disabled {
-    cursor: not-allowed;
+    cursor: default;
 }
 
 .upload-btn, .send-btn {
@@ -248,13 +249,14 @@ textarea:disabled {
 
 .send-btn.disable {
     background-color: #a0a0a0;
+    cursor: default;
 }
 
 #chat-log {
     position: relative;
     padding: 0rem 4rem;
     max-width: 48rem;
-    max-height: calc(100vh - 200px);
+    max-height: calc(100vh - 324px);
     margin: auto;
     margin-bottom: 1rem;
     overflow: scroll;
