@@ -1,4 +1,4 @@
-# MeetSync (RAG Pipeline)
+# MeetSync - Retrieval-Augmented Generation (RAG) Pipeline for Project Management
 
 **MeetSync** is an AI-powered project assistant with dynamic contextual updates for engineering & product teams
 
@@ -27,7 +27,7 @@ MeetSync - an AI-powered progress aware assistant:
 6. [Using the App](#using-the-app)
 7. [Security and Reliability](#security-and-reliability)
 8. [Key Design Decisions](#key-design-decisions)
-9. [Example Query FLow](#example-query-flow)
+9. [Example Query Flow](#example-query-flow)
 10. [Bonus Features](#bonus-features)
 11. [Author](#author)
 12. [Summary](#summary)
@@ -41,17 +41,18 @@ Enable project teams to interact with a dynamically updated, centralized knowled
 
 ## Architecture
 
-| Layer                    | Components                                                                                  | Description                                                                                                                                           |
-| ------------------------ | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Frontend (UI)**        | `index.html`, `js/api.js`, `js/main.js`, `css/`                                             | Static web app served by FastAPI. Lets users upload files, query the system, and manage the knowledge base. Uses Fetch API to call backend endpoints. |
-| **FastAPI Backend**      | `app/main.py`, `routes/ingest.py`, `routes/query.py`, `routes/files.py`, `routes/delete.py` | RESTful API handling ingestion, querying, and file management. Handles CORS, static serving, and JSON responses.                                      |
-| **Ingestion Layer**      | `text_extraction.py`, `delete_ops.py`                                                       | Extracts and cleans text from `.pdf`, `.txt`, `.md`. Creates per-file JSON corpus and metadata. Supports deletion/reset.                              |
-| **Indexing Layer**       | `embeddings.py`, `vector_db.py`                                                             | Converts chunks to embeddings via Mistral API. Stores embeddings locally (`.npy`, `.json`). Performs semantic search with cosine similarity.          |
-| **Generation Layer**     | `mistral_chat.py`                                                                           | Uses Mistral chat model to generate answers over retrieved chunks. Implements grounding, citation inclusion, and structured response templates.       |
-| **Utilities**            | `mistral_client.py`                                                                         | Unified API client with exponential backoff (handles 429s and 5xx retries). Used for both embeddings and chat completions.                            |
-| **Data Storage**         | `data/corpus/texts/`, `data/index/`                                                         | Local storage of ingested documents, embeddings, and metadata. No external vector DB.                                                                 |
-| **Config & Environment** | `.env`, `config.py`                                                                         | Centralized configuration for API keys, models, and runtime settings. Loaded securely via `dotenv`.                                                   |
-| **Launcher**             | `launch.py`                                                                                 | Runs FastAPI app with Uvicorn server, configurable host/port.                                                                                         |
+| Layer | Components | Description |
+|-------|-------------|-------------|
+| **Frontend (UI)** | `index.html`, `js/`, `css/` | Simple static interface for uploading files, querying the system, and managing files. |
+| **Backend (FastAPI)** | `app/main.py`, `routes/*.py` | REST API for ingestion, query, and deletion. CORS-enabled, serves UI statically. |
+| **Ingestion Layer** | `core/ingest_pipeline.py` | Extracts text from `.pdf`, `.txt`, `.md`, chunks, embeds, and stores locally. |
+| **Retrieval Layer** | `core/query_pipeline.py` | Hybrid (semantic + keyword) retrieval over local embeddings and text chunks. |
+| **Generation Layer** | `core/generation.py` | Builds prompt, calls Mistral chat model, generates structured, citation-backed answer. |
+| **Policy Layer** | `core/policy.py` | Rejects PII, legal, or medical queries for safety. |
+| **Resilience Layer** | `core/utils.py` | Implements exponential backoff retry for rate-limited (429) API calls. |
+| **Data Storage** | `/data/` | Stores `chunks.jsonl`, `metadata.jsonl`, and `embeddings.npy` locally. |
+| **Config** | `config.py`, `.env` | Centralized model & API settings. |
+| **Launcher** | `launch.py` | Starts Uvicorn with reloading for local dev. |
 
 ---
 
@@ -59,14 +60,16 @@ Enable project teams to interact with a dynamically updated, centralized knowled
 
 | Capability | Description |
 |-------------|-------------|
-| **Multi-format ingestion** | Upload and parse `.pdf`, `.txt`, and `.md` files. |
-| **Text cleaning & chunking** | Extracted text is normalized and split into uniform chunks. |
-| **Local vector database** | Custom NumPy-based `SimpleVectorDB` for similarity search (no external DB). |
-| **Semantic + lexical retrieval** | Combines embedding-based and keyword relevance. |
-| **Dynamic knowledge base** | Ingest new meeting notes or delete/reset old data on demand. |
-| **Citations** | Each answer includes chunk references for transparency. |
-| **Rate-limit handling** | Built-in exponential backoff for Mistral API calls (handles 429s). |
-| **UI management** | Upload, list, delete, and query knowledge base from browser. |
+| **Multi-format ingestion** | Upload `.pdf`, `.txt`, `.md` project docs or meeting transcripts. |
+| **Local vector store** | NumPy + JSON-based index for embeddings (no external DB). |
+| **Hybrid retrieval** | Combines cosine similarity and keyword overlap. |
+| **Adaptive generation** | Uses prompt templates for lists, tables, and paragraph styles. |
+| **Citation-based output** | LLM responses cite chunk IDs for traceability. |
+| **Evidence thresholding** | Refuses answers when top chunks have low similarity. |
+| **Hallucination filter** | Scans answers for unsupported content. |
+| **Query refusal policies** | Detects and rejects PII, legal, or medical queries. |
+| **Rate-limit handling** | Retry with exponential backoff and jitter for Mistral API. |
+| **File management** | List, delete, and reset ingested files dynamically. |
 
 ---
 
@@ -76,41 +79,38 @@ Enable project teams to interact with a dynamically updated, centralized knowled
 rag-meetsync/
 │
 ├── app/
-│ ├── main.py # FastAPI app entrypoint
-│ ├── config.py # Loads .env & runtime config
-│ ├── models.py # Pydantic response models
+│ ├── main.py # FastAPI entrypoint
+│ ├── config.py # Loads environment and runtime config
+│ ├── models.py # Pydantic schemas
 │ │
 │ ├── core/
-│ │ ├── ingestion/
-│ │ │ ├── text_extraction.py
-│ │ │ ├── delete_ops.py
-│ │ ├── indexing/
-│ │ │ ├── vector_db.py
-│ │ │ ├── embeddings.py
-│ │ ├── generation/
-│ │ │ └── mistral_chat.py
-│ │ └── utils/
-│ │ └── mistral_client.py # retry + backoff logic
+│ │ ├── ingest_pipeline.py # File ingestion, text extraction, embeddings
+│ │ ├── query_pipeline.py # Semantic + keyword search and ranking
+│ │ ├── generation.py # LLM-based answer generation with citations
+│ │ ├── policy.py # PII, legal, and medical query refusal
+│ │ ├── utils.py # Retry & backoff for API rate limits
+│ │ └── init.py
 │ │
 │ ├── routes/
-│ │ ├── ingest.py
-│ │ ├── query.py
-│ │ ├── files.py
-│ │ └── delete.py
+│ │ ├── ingest.py # POST /ingest - upload files
+│ │ ├── query.py # POST /query - ask questions
+│ │ ├── files.py # GET /files - list files
+│ │ ├── delete.py # DELETE /delete/{file_id} or /all
+│ │ └── init.py
 │ │
-│ └── ui/ # Frontend (served statically)
+│ └── ui/ # Static frontend
 │ ├── index.html
 │ ├── js/
-│ │ ├── api.js
-│ │ └── main.js
 │ └── css/
 │
-├── data/
-│ ├── corpus/texts/ # Stored JSON per ingested file
-│ └── index/ # Embeddings + metadata
+├── data/ # Local knowledge base storage
+│ ├── chunks.jsonl
+│ ├── metadata.jsonl
+│ └── embeddings.npy
 │
-├── launch.py # uvicorn startup script
-├── .env # API keys & config
+├── launch.py # Starts the FastAPI server
+├── .env # Environment variables
+├── requirements.txt
 └── README.md
 ```
 
@@ -147,57 +147,67 @@ App will start at: http://127.0.0.1:8000
 ## Using the App
 
 ### Upload Files
-- Click "Upload & Ingest".
-- Supports .pdf, .txt, and .md.
-- Extracted text → chunked → embedded → indexed.
+- Go to the web UI and click "+" icon.
+- Supportes `.pdf`, `.txt`, and `.md` file formats.
+- The system extracts text, chunks it (~500 chars per chunk), and embeds via Mistral API.
 
-### Manage Files
-- View all files in the knowledge base.
-- Delete individual files.
-- Reset Memory to clear all data (/delete/all).
+### Manage Knowledge Base
 
-### Ask Questions
-- Type your query in the chat box.
-- The system:
-  1. Detects query intent.
-  2. Retrieves top-k relevant chunks via SimpleVectorDB.
-  3. Generates a grounded answer with citations via Mistral.
-- Results include answer text and source references.
+| Endpoint            | Description                                                      |
+| ------------------- | ---------------------------------------------------------------- |
+| `/files`            | Lists all ingested files with IDs, timestamps, and chunk counts. |
+| `/delete/{file_id}` | Deletes a specific file and its embeddings.                      |
+| `/delete/all`       | Clears the entire knowledge base.                                |
+
+
+### Querying
+- Enter natural language questions in the chat box.
+- The pipeline:
+  1. Detects intent (skip greetings).
+  2. Filters for PII/legal/medical content.
+  3. Performs hybrid retrieval (semantic + keyword).
+  4. Generates a grounded answer using Mistral Chat with chunk citations.
+  5. Filters hallucinations or low-evidence answers.
 
 ## Security and Reliability
 
-| Concern           | Mitigation                                 |
-| ----------------- | ------------------------------------------ |
-| API key exposure  | Stored in `.env`, never sent to client     |
-| HTML/JS injection | Input sanitized before request             |
-| Rate limits       | Automatic exponential backoff retry        |
-| Fault tolerance   | Graceful handling of missing/invalid files |
-| Privacy           | Local-only storage (no cloud vector DBs)   |
+| Concern                       | Mitigation                                              |
+| ----------------------------- | ------------------------------------------------------- |
+| **Rate limits (429)**         | Automatic exponential backoff with jitter in `utils.py` |
+| **PII/Legal/Medical queries** | Refused with clear message in `policy.py`               |
+| **Fault tolerance**           | Defensive checks for empty or missing files             |
+| **Data privacy**              | All embeddings and texts stored locally only            |
+| **CORS/Frontend safety**      | Enabled in FastAPI middleware; inputs sanitized         |
 
 ## Key Design Decisions
 
-| Design Choice              | Rationale                                                      |
-| -------------------------- | -------------------------------------------------------------- |
-| **FastAPI**                | Simple, async, modern web framework                            |
-| **No external vector DB**  | Full transparency; NumPy-based storage                         |
-| **Retry/backoff logic**    | Handles Mistral API limits gracefully                          |
-| **Separation of concerns** | Core logic (ingestion, indexing, generation) decoupled from UI |
-| **Static frontend**        | Zero dependency deployment with built-in serving               |
+| Decision                         | Rationale                                                |
+| -------------------------------- | -------------------------------------------------------- |
+| **No external vector DB**        | Complies with task requirement; transparent, portable    |
+| **FastAPI**                      | Modern async Python framework with static serving        |
+| **Mistral API**                  | Unified provider for both embeddings and LLM completions |
+| **Local file-backed storage**    | Easy to inspect and reset between runs                   |
+| **Chunking by character length** | Balances embedding quality and latency                   |
+| **PII/Legal filter**             | Demonstrates responsible AI practice                     |
+| **Retry logic for rate limits**  | Avoids crashing on API 429 errors                        |
+| **UUID-based file IDs**          | Prevents collisions for same filenames                   |
 
-## Example Query FLow
+## Example Query Flow
 
 ### User Input:
-> "What decisions were made in the last project kickoff meeting?"
+> "List the key decisions made in the last sprint review."
 
-### RAG:
-- Sanitize input → intent = informational.
-- Retrieve top-k relevant chunks from SimpleVectorDB.
-- Re-rank and check similarity threshold.
-- Construct RAG prompt → send to Mistral LLM.
-- Generate answer with citations.
+### Pipeline Flow:
+1. Intent Detection: Query is informational → triggers search.
+2. Retrieval: Hybrid search ranks top-k chunks by similarity + keyword overlap.
+3. Evidence Thresholding: Ensures top results exceed similarity cutoff.
+4. Prompt Construction: Chunks formatted as [0] ... [n] for LLM grounding.
+5. Generation: Mistral Chat model generates an answer with citations.
+6. Post-Processing: Citations extracted; hallucinations flagged.
 
-### Response:
-The team decided to adopt a modular architecture and migrate to the new API design.
+### Sample Response:
+- The team finalized the API versioning strategy [0]
+- The backend migration to EC2 was postponed [2]
 
 Sources:
 - project-kickoff-meeting-8f2a12e3a1:chunk_05
@@ -205,13 +215,12 @@ Sources:
 
 ## Bonus Features
 
-- Citations with similarity thresholds
-- "Insufficient evidence" fallback
-- Configurable models via `.env`
-- Dynamic reindexing after file deletion
-- Rate-limit handling for embeddings & completions
-- Secure file and query handling (sanitized input)
-- One-click "Reset Knowledge Base"
+- Citations with thresholds: Refuses to answer when evidence is weak
+- Adaptive prompt templates: Paragraph, list, or table formatting
+- Hallucination filter: Detects unsupported claims
+- Query refusal policy: Rejects PII, legal, or medical content
+- Exponential backoff: Handles Mistral 429 errors gracefully
+- Dynamic file management: Ingest, list, delete, or reset knowledge base anytime
 
 ## Author
 
@@ -221,8 +230,12 @@ GitHub: [@JayantDabas](https://github.com/dabasjayant)
 
 ## Summary
 
-MeetSync demonstrates a full-stack, production-ready mini RAG pipeline:
-- Built from scratch (no external vector DBs or RAG libraries)
-- Modular architecture
-- API-driven backend with clean retry handling
-- Browser-based, minimal UI for realistic user interaction
+MeetSync demonstrates a clean, production-style implementation of a Retrieval-Augmented Generation pipeline:
+
+- Full FastAPI backend with modular components
+- Mistral API integration for both embeddings and generation
+- No third-party RAG or vector DBs
+- Responsible AI practices (PII filter, evidence thresholds)
+- Simple and interactive web UI
+
+It serves as a practical, well-structured demonstration of applied AI engineering and full-stack RAG design.
