@@ -37,7 +37,9 @@ MeetSync - an AI-powered progress aware assistant:
 Enable project teams to interact with a dynamically updated, centralized knowledge base that integrates meeting transcripts, project documents, and chat-based UI to instantly retrieve the latest insights and decisions.
 
 ![meetsync-ui](previews/landing_page.png "meetsync-ui")
-![meetsync-chat-ui](previews/chat_ui.png "meetsync-chat-ui")
+| Chat UI                                   | Answer citations                                    |
+| ----------------------------------------- | --------------------------------------------------- |
+| ![meetsync-chat-ui](previews/chat_ui.png) | ![meetsync-chat-sources](previews/chat_sources.png) |
 
 ## Architecture
 
