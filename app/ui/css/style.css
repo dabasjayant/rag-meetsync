@@ -169,6 +169,7 @@ h3 div {
 
 form {
     width: calc(100vw - 260px);
+    height: calc(100vh - 60px);
 }
 
 .bottom {
@@ -267,7 +268,10 @@ textarea:disabled {
     margin: 1rem 0;
     max-width: 80%;
     width: max-content;
-    font-size: 14px;
+    font-size: 15px;
+    color: #0d0d0d;
+    line-height: 1.5;
+    letter-spacing: .2px;
 }
 .user-msg p, .agent-msg p {
     margin: 0;
