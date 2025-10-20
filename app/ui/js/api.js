@@ -7,8 +7,8 @@ export async function fetchFiles() {
   return data.files || [];
 }
 
-export async function deleteFile(fileId, reindex = true) {
-    const url = `${API_BASE}/delete/${encodeURIComponent(fileId)}?reindex=${reindex}`;
+export async function deleteFile(fileId) {
+    const url = `${API_BASE}/delete/${encodeURIComponent(fileId)}`;
     const res = await fetch(url, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
